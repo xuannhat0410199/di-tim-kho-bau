@@ -1,142 +1,152 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Đi tìm kho báu</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Đi tìm kho báu</title>
 
-  <style>
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Arial, sans-serif;
-      background: url("assets/images/sea-bg.jpg") no-repeat center center / cover;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+<style>
+* { box-sizing: border-box; font-family: system-ui, sans-serif; }
+html, body {
+  margin: 0;
+  height: 100%;
+}
 
-    .game-box {
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      text-align: center;
-    }
+body {
+  background: url("assets/images/sea-bg.jpg") center/cover no-repeat fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-    h1 {
-      margin-top: 0;
-    }
+.game-box {
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: 20px;
+  border-radius: 14px;
+  width: 95%;
+  max-width: 500px;
+  text-align: center;
+}
 
-    .question {
-      font-size: 18px;
-      margin-bottom: 20px;
-    }
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
 
-    .options button {
-      display: block;
-      width: 100%;
-      margin: 10px 0;
-      padding: 14px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-    }
+.start-btn { background: #f4c430; color: #000; }
+.answer-btn { background: #1e90ff; color: #fff; }
+.answer-btn:hover { opacity: 0.85; }
 
-    .options button:hover {
-      background: #ffd966;
-    }
+.hidden { display: none; }
 
-    .hint {
-      font-size: 13px;
-      opacity: 0.8;
-      margin-top: 10px;
-    }
-  </style>
+.progress {
+  margin-bottom: 10px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+</style>
 </head>
+
 <body>
 
-  <div class="game-box">
-    <h1>🏴‍☠️ Đi tìm kho báu</h1>
-    <div class="question" id="question">Đang tải câu hỏi...</div>
-    <div class="options" id="options"></div>
-    <div class="hint">❌ Sai là chơi lại từ đầu</div>
-  </div>
+<div class="game-box">
+  <div class="progress" id="progress"></div>
+
+  <h2 id="question">Đi tìm kho báu 🏴‍☠️</h2>
+
+  <div id="answers"></div>
+
+  <button class="start-btn" id="startBtn">Mở ô kho báu</button>
+</div>
+
+<!-- AUDIO -->
+<audio id="bgm" src="assets/sounds/bgm.mp3" loop></audio>
+<audio id="correctSound" src="assets/sounds/correct.mp3"></audio>
+<audio id="wrongSound" src="assets/sounds/wrong.mp3"></audio>
 
 <script>
-  let questions = [];
-  let usedIndexes = [];
+let questions = [];
+let usedIndexes = [];
+let currentQuestion = null;
 
-  // ÂM THANH
-  const bgm = new Audio("assets/sounds/bgm.mp3");
-  bgm.loop = true;
-  bgm.volume = 0.4;
+const qEl = document.getElementById("question");
+const answersEl = document.getElementById("answers");
+const startBtn = document.getElementById("startBtn");
+const progressEl = document.getElementById("progress");
 
-  const correctSound = new Audio("assets/sounds/correct.mp3");
-  const wrongSound = new Audio("assets/sounds/wrong.mp3");
+const bgm = document.getElementById("bgm");
+const correctSound = document.getElementById("correctSound");
+const wrongSound = document.getElementById("wrongSound");
 
-  // Bật BGM khi người chơi click lần đầu
-  document.body.addEventListener("click", () => {
-    if (bgm.paused) bgm.play();
-  }, { once: true });
+fetch("questions.json")
+  .then(res => res.json())
+  .then(data => questions = data);
 
-  fetch("questions.json")
-    .then(res => res.json())
-    .then(data => {
-      questions = data;
-      nextQuestion();
-    })
-    .catch(() => {
-      document.getElementById("question").innerText = "❌ Không load được câu hỏi";
-    });
-
-  function getRandomQuestion() {
-    if (usedIndexes.length === questions.length) {
-      alert("🎉 Bạn đã tìm thấy toàn bộ kho báu!");
-      location.reload();
-      return null;
-    }
-
-    let index;
-    do {
-      index = Math.floor(Math.random() * questions.length);
-    } while (usedIndexes.includes(index));
-
-    usedIndexes.push(index);
-    return questions[index];
+function getRandomQuestion() {
+  if (usedIndexes.length === questions.length) {
+    qEl.innerText = "🎉 Bạn đã tìm thấy kho báu!";
+    answersEl.innerHTML = "";
+    startBtn.classList.remove("hidden");
+    startBtn.innerText = "Chơi lại";
+    return null;
   }
 
-  function nextQuestion() {
-    const q = getRandomQuestion();
-    if (!q) return;
+  let index;
+  do {
+    index = Math.floor(Math.random() * questions.length);
+  } while (usedIndexes.includes(index));
 
-    document.getElementById("question").innerText = q.question;
-    const optionsDiv = document.getElementById("options");
-    optionsDiv.innerHTML = "";
+  usedIndexes.push(index);
+  return questions[index];
+}
 
-    const shuffled = [...q.options].sort(() => Math.random() - 0.5);
+function showQuestion() {
+  currentQuestion = getRandomQuestion();
+  if (!currentQuestion) return;
 
-    shuffled.forEach(opt => {
-      const btn = document.createElement("button");
-      btn.innerText = opt;
-      btn.onclick = () => checkAnswer(opt, q.correct);
-      optionsDiv.appendChild(btn);
-    });
+  progressEl.innerText = `Kho báu đã mở: ${usedIndexes.length}/${questions.length}`;
+  qEl.innerText = currentQuestion.question;
+  answersEl.innerHTML = "";
+
+  currentQuestion.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.innerText = opt;
+    btn.onclick = () => checkAnswer(opt);
+    answersEl.appendChild(btn);
+  });
+}
+
+function checkAnswer(answer) {
+  if (answer === currentQuestion.answer) {
+    correctSound.play();
+    setTimeout(showQuestion, 600);
+  } else {
+    wrongSound.play();
+    setTimeout(resetGame, 800);
   }
+}
 
-  function checkAnswer(selected, correct) {
-    if (selected === correct) {
-      correctSound.play();
-      nextQuestion();
-    } else {
-      wrongSound.play();
-      alert("❌ Sai rồi! Game sẽ bắt đầu lại.");
-      location.reload();
-    }
-  }
+function resetGame() {
+  usedIndexes = [];
+  qEl.innerText = "❌ Sai rồi! Quay lại từ đầu";
+  answersEl.innerHTML = "";
+  progressEl.innerText = "";
+  startBtn.classList.remove("hidden");
+  startBtn.innerText = "Chơi lại";
+}
+
+startBtn.onclick = () => {
+  startBtn.classList.add("hidden");
+  bgm.play();
+  showQuestion();
+};
 </script>
 
 </body>
